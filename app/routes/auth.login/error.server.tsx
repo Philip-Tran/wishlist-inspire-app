@@ -1,6 +1,14 @@
-import { LoginErrorType } from "@shopify/shopify-app-remix/server";
+import { LoginErrorType } from "@shopify/shopify-app-react-router/server";
 
-export function loginErrorMessage(loginErrors) {
+interface LoginErrors {
+  shop?: LoginErrorType;
+}
+
+interface LoginErrorMessages {
+  shop?: string;
+}
+
+export function loginErrorMessage(loginErrors: LoginErrors | null): LoginErrorMessages {
   if (loginErrors?.shop === LoginErrorType.MissingShop) {
     return { shop: "Please enter your shop domain to log in" };
   } else if (loginErrors?.shop === LoginErrorType.InvalidShop) {

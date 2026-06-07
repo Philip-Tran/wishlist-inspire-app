@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { json } from "@remix-run/node";
+import type { LoaderFunctionArgs } from "react-router";
 import {
   Page,
   Layout,
@@ -14,17 +13,23 @@ import {
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { useLoaderData } from "@remix-run/react";
-import { formatDistanceToNow, parseISO } from 'date-fns';
+import { useLoaderData } from "react-router";
+import { formatDistanceToNow } from 'date-fns';
 
+interface WishlistItem {
+  id: number;
+  customerId: string | null;
+  productId: string | null;
+  createdAt: Date;
+}
 
-
-export const loader = async ({ request }) => {
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   const auth = await authenticate.admin(request);
   const shop = auth.session.shop;
   console.log('shop: -------> ', shop);
+  
   // get data from database for that shop acending by id
-  const wishlistData = await db.wishlist.findMany({
+  const wishlistData: WishlistItem[] = await db.wishlist.findMany({
     where: {
       shop: shop,
     },
@@ -35,20 +40,20 @@ export const loader = async ({ request }) => {
 
   console.log('wishlistData: -------> ', wishlistData);
 
-  return json(wishlistData);
+  return wishlistData;
 };
 
-export const action = async ({ request }) => {
-
+export const action = async ({ request }: LoaderFunctionArgs) => {
+  // Handle actions if needed
+  return new Response(null, { status: 204 });
 };
 
 export default function Index() {
-  const wishlistData = useLoaderData();
-  const wishlistArray = wishlistData.map((item) => {
-    const createdAt = formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true });
+  const wishlistData = useLoaderData<typeof loader>() || [];
+  const wishlistArray = wishlistData.map((item: WishlistItem) => {
+    const createdAt = formatDistanceToNow(item.createdAt, { addSuffix: true });
     return [item.customerId, item.productId, createdAt];
   });
-
 
   return (
     <Page title="Wishlist overview dashboard">
@@ -77,19 +82,18 @@ export default function Index() {
                   action={{
                     content: 'Learn more',
                     url: 'https://youtube.com/codeinspire',
-                    external: "true",
+                    external: true,
                   }}
                   secondaryAction={{
                     content: 'Watch videos',
                     url: 'https://youtube.com/codeinspire',
-                    external: "true",
+                    external: true,
                   }}
                   image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
                 >
                   <p>You don't have any products in your wishlist yet.</p>
                 </EmptyState>
               )}
-
             </Card>
           </Layout.Section>
           <Layout.Section variant="oneThird">
@@ -100,7 +104,6 @@ export default function Index() {
                     App template specs
                   </Text>
                   <BlockStack gap="200">
-
                     <InlineStack align="space-between">
                       <Text as="span" variant="bodyMd">
                         Course content
@@ -117,17 +120,16 @@ export default function Index() {
                         Github
                       </Link>
                     </InlineStack>
-
                     <InlineStack align="space-between">
                       <Text as="span" variant="bodyMd">
                         Framework
                       </Text>
                       <Link
-                        url="https://remix.run"
+                        url="https://reactrouter.com"
                         target="_blank"
                         removeUnderline
                       >
-                        Remix
+                        React Router
                       </Link>
                     </InlineStack>
                     <InlineStack align="space-between">
@@ -176,7 +178,6 @@ export default function Index() {
                         GraphQL API
                       </Link>
                     </InlineStack>
-
                   </BlockStack>
                 </BlockStack>
               </Card>
@@ -194,7 +195,6 @@ export default function Index() {
                       </Link>{" "}
                       to get started
                     </List.Item>
-
                   </List>
                 </BlockStack>
               </Card>

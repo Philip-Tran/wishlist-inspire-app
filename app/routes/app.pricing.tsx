@@ -1,55 +1,68 @@
 import {
   Page,
   Box,
-  Button,
   Card,
   CalloutCard,
   Text,
   Grid,
   Divider,
   BlockStack,
-  ExceptionList
+  ExceptionList,
+  Button,
 } from "@shopify/polaris";
-import { json } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "react-router";
+import type { LoaderFunctionArgs } from "react-router";
 import { authenticate, MONTHLY_PLAN, ANNUAL_PLAN } from "../shopify.server";
+import { CheckIcon } from '@shopify/polaris-icons';
 
-import {
-  MobileAcceptMajor
-} from '@shopify/polaris-icons'
+interface Plan {
+  name: string;
+  id?: string;
+}
 
-export async function loader({ request }) {
+interface LoaderData {
+  billing: any;
+  plan: Plan;
+}
+
+interface PlanInfo {
+  title: string;
+  description: string;
+  price: string;
+  action: string;
+  name: string;
+  url: string;
+  features: string[];
+}
+
+export async function loader({ request }: LoaderFunctionArgs) {
   const { billing } = await authenticate.admin(request);
 
   try {
     // Attempt to check if the shop has an active payment for any plan
-    const billingCheck = await billing.require({
+    // Check billing (non-required approach to avoid redirect)
+    const billingCheck = await (billing as any).check({
       plans: [MONTHLY_PLAN, ANNUAL_PLAN],
       isTest: true,
-      // Instead of redirecting on failure, just catch the error
-      onFailure: () => {
-        throw new Error('No active plan');
-      },
     });
 
-    // If the shop has an active subscription, log and return the details
     const subscription = billingCheck.appSubscriptions[0];
-    console.log(`Shop is on ${subscription.name} (id ${subscription.id})`);
-    return json({ billing, plan: subscription });
+    
+    if (subscription) {
+      console.log(`Shop is on ${subscription.name} (id ${subscription.id})`);
+      return { billing, plan: subscription };
+    }
+    
+    console.log('Shop does not have any active plans.');
+    return { billing, plan: { name: "Free" } };
 
   } catch (error) {
-    // If the shop does not have an active plan, return an empty plan object
-    if (error.message === 'No active plan') {
-      console.log('Shop does not have any active plans.');
-      return json({ billing, plan: { name: "Free" } });
-    }
-    // If there is another error, rethrow it
-    throw error;
+    console.log('Billing check failed, defaulting to Free plan');
+    return { billing: null, plan: { name: "Free" } };
   }
 }
 
-
-let planData = [
+const planData: PlanInfo[] = [
   {
     title: "Free",
     description: "Free plan with basic features",
@@ -80,10 +93,10 @@ let planData = [
       "Advanced analytics"
     ]
   },
-]
+];
 
 export default function PricingPage() {
-  const { plan } = useLoaderData();
+  const { plan } = useLoaderData<LoaderData>();
 
   console.log('plan', plan);
   return (
@@ -113,34 +126,32 @@ export default function PricingPage() {
       </div>
 
       <Grid>
-
         {planData.map((plan_item, index) => (
           <Grid.Cell key={index} columnSpan={{xs: 6, sm: 3, md: 3, lg: 6, xl: 6}}>
-            <Card background={ plan_item.name == plan.name ? "bg-surface-success" : "bg-surface" } sectioned>
+            <Card background={ plan_item.name == plan.name ? "bg-surface-success" : "bg-surface" }>
               <Box padding="400">
                 <Text as="h3" variant="headingMd">
                   {plan_item.title}
                 </Text>
-                <Box as="p" variant="bodyMd">
+                <Text as="p" variant="bodyMd">
                   {plan_item.description}
-                  {/* If plan_item is 0, display nothing */}
                   <br />
                   <Text as="p" variant="headingLg" fontWeight="bold">
                     {plan_item.price === "0" ? "" : "$" + plan_item.price}
                   </Text>
-                </Box>
+                </Text>
 
                 <div style={{ margin: "0.5rem 0"}}>
                   <Divider />
                 </div>
 
-                <BlockStack gap={100}>
+                <BlockStack gap="100">
                   {plan_item.features.map((feature, index) => (
                     <ExceptionList
                       key={index}
                       items={[
                         {
-                          icon: MobileAcceptMajor,
+                          icon: CheckIcon,
                           description: feature,
                         },
                       ]}
@@ -153,7 +164,7 @@ export default function PricingPage() {
 
                 { plan_item.name == "Monthly subscription" ?
                   plan.name != "Monthly subscription" ? (
-                    <Button primary url={plan_item.url}>
+                    <Button variant="primary" url={plan_item.url}>
                       {plan_item.action}
                     </Button>
                   ) : (
@@ -166,9 +177,7 @@ export default function PricingPage() {
             </Card>
           </Grid.Cell>
         ))}
-
       </Grid>
-
     </Page>
   );
 }

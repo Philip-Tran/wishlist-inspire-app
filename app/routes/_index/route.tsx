@@ -1,22 +1,26 @@
-import { json, redirect } from "@remix-run/node";
-import { Form, useLoaderData } from "@remix-run/react";
+import { redirect, Form, useLoaderData } from "react-router";
+import type { LoaderFunctionArgs } from "react-router";
 import { login } from "../../shopify.server";
 import indexStyles from "./style.css";
 
 export const links = () => [{ rel: "stylesheet", href: indexStyles }];
 
-export const loader = async ({ request }) => {
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
 
   if (url.searchParams.get("shop")) {
     throw redirect(`/app?${url.searchParams.toString()}`);
   }
 
-  return json({ showForm: Boolean(login) });
+  return { showForm: Boolean(login) };
 };
 
+interface LoaderData {
+  showForm: boolean;
+}
+
 export default function App() {
-  const { showForm } = useLoaderData();
+  const { showForm } = useLoaderData<LoaderData>();
 
   return (
     <div className="index">
